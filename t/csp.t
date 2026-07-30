@@ -2,7 +2,7 @@ use Test::Nginx::Socket::Lua;
 use Cwd qw(cwd);
 
 repeat_each(1);
-plan tests => repeat_each() * blocks() * 2;
+plan tests => repeat_each() * blocks() * 3;
 
 our $pwd = cwd();
 our $HttpConfig = qq{
@@ -27,7 +27,7 @@ __DATA__
 --- request
 GET /t
 --- response_headers_like
-Content-Security-Policy: default-src 'none';.*object-src 'none'
+Content-Security-Policy: default-src 'none';.*object-src 'none'.*
 --- response_body
 ok
 
@@ -65,6 +65,6 @@ Content-Security-Policy: script-src 'nonce-[A-Za-z0-9+/]+'; object-src 'none'
 --- request
 GET /t
 --- response_headers_like
-Content-Security-Policy-Report-Only: default-src 'none'
+Content-Security-Policy-Report-Only: default-src 'none'.*
 --- response_body
 ok

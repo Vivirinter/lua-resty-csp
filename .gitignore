@@ -3,4 +3,7 @@
 *.o
 *.so
 *.rock
+*.tar.gz
+lua-resty-csp-*/
+!lua-resty-csp-*-*.rockspec
 luacov.*.out

@@ -20,4 +20,4 @@ make test-nginx
 1. Bump `dist.ini`, rockspec, and `_VERSION`.
 2. Update `CHANGELOG.md`.
 3. Push a tag `vX.Y.Z` to trigger the Release workflow.
-4. Optional: set repository secret `OPM_GITHUB_TOKEN` (GitHub PAT with `repo` scope) for OPM upload.
+4. Optional: set repository secret `OPM_GITHUB_TOKEN` to a GitHub PAT with `repo` and `user:email` scopes for OPM upload.

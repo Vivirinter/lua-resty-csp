@@ -61,6 +61,11 @@ jobs:
             echo "OPM_GITHUB_TOKEN not set; skip opm upload"
             exit 0
           fi
-          printf '%s\n' "$OPM_GITHUB_TOKEN" | opm login Vivirinter
-          opm build
+          cat > "$HOME/.opmrc" <<EOF
+          github_account=Vivirinter
+          github_token=${OPM_GITHUB_TOKEN}
+          upload_server=https://opm.openresty.org/
+          download_server=https://opm.openresty.org/
+          EOF
+          chmod 600 "$HOME/.opmrc"
           opm upload
