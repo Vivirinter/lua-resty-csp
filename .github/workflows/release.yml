@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unit tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.4
+          lua5.4 t/csp_test.lua
+
+      - name: OpenResty resty tests
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src openresty/openresty:alpine-fat \
+            resty -I lib t/resty/01_apply.lua
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  opm:
+    name: Publish to OPM
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenResty
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg ca-certificates lsb-release
+          wget -qO - https://openresty.org/package/pubkey.gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/openresty.gpg
+          echo "deb [signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -sc) main" \
+            | sudo tee /etc/apt/sources.list.d/openresty.list
+          sudo apt-get update
+          sudo apt-get install -y openresty
+
+      - name: Upload to OPM
+        env:
+          OPM_GITHUB_TOKEN: ${{ secrets.OPM_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          export PATH="/usr/local/openresty/bin:$PATH"
+          if [ -z "${OPM_GITHUB_TOKEN:-}" ]; then
+            echo "OPM_GITHUB_TOKEN not set; skip opm upload"
+            exit 0
+          fi
+          printf '%s\n' "$OPM_GITHUB_TOKEN" | opm login Vivirinter
+          opm build
+          opm upload

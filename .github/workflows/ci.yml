@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Lua unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua
+        run: sudo apt-get update && sudo apt-get install -y lua5.4
+      - name: Run unit tests
+        run: lua5.4 t/csp_test.lua
+
+  openresty:
+    name: OpenResty resty tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run resty tests
+        run: |
+          docker run --rm \
+            -v "$PWD:/src" \
+            -w /src \
+            openresty/openresty:alpine-fat \
+            resty -I lib t/resty/01_apply.lua
+
+  test-nginx:
+    name: Test::Nginx
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup OpenResty
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg ca-certificates lsb-release cpanminus \
+            build-essential libhttp-message-perl libtest-longstring-perl \
+            liblist-moreutils-perl libtext-diff-perl liburi-perl libwww-perl
+          wget -qO - https://openresty.org/package/pubkey.gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/openresty.gpg
+          echo "deb [signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -sc) main" \
+            | sudo tee /etc/apt/sources.list.d/openresty.list
+          sudo apt-get update
+          sudo apt-get install -y openresty
+          sudo cpanm --notest Test::Nginx
+      - name: Prove
+        run: |
+          export PATH="/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin:$PATH"
+          export TEST_NGINX_BINARY="$(command -v nginx)"
+          prove -v t/csp.t

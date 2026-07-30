@@ -1,64 +1,102 @@
 # lua-resty-csp
 
-Content Security Policy (CSP) builder for OpenResty.
+[![CI](https://github.com/Vivirinter/lua-resty-csp/actions/workflows/ci.yml/badge.svg)](https://github.com/Vivirinter/lua-resty-csp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Installation
+Content-Security-Policy (CSP) header builder for [OpenResty](https://openresty.org/) / ngx_lua.
+
+## Install
 
 ```bash
-opm install Vivirinter/lua-resty-csp
+opm get Vivirinter/lua-resty-csp
 ```
 
-Or manually copy `lib/resty/csp.lua` to your OpenResty lualib directory.
+Or copy `lib/resty/csp.lua` into your Lua package path.
 
-## Usage
+## Quick start
 
 ```lua
 local csp = require("resty.csp")
 
--- Using presets
 csp.strict():apply()
 
--- Custom policy
 csp.new()
     :default_src(csp.SELF)
     :script_src(csp.SELF, "cdn.jsdelivr.net")
     :style_src(csp.SELF, csp.UNSAFE_INLINE)
     :img_src(csp.SELF, csp.DATA)
+    :object_src(csp.NONE)
     :apply()
+```
 
--- From config table
-csp.from({
-    default_src = {"'self'"},
-    script_src = {"'self'", "cdn.example.com"},
-}):apply()
+Nonce-based scripts:
+
+```lua
+local nonce = assert(csp.generate_nonce())
+ngx.ctx.csp_nonce = nonce
+
+csp.new()
+    :default_src(csp.SELF)
+    :script_src(csp.nonce(nonce), csp.STRICT_DYNAMIC)
+    :object_src(csp.NONE)
+    :base_uri(csp.SELF)
+    :apply()
+```
+
+```html
+<script nonce="...">/* same value as ngx.ctx.csp_nonce */</script>
 ```
 
 ## Presets
 
-- `csp.strict()` — Maximum security
-- `csp.basic()` — Allows unsafe-inline styles
-- `csp.api()` — Minimal policy for JSON APIs
-
-## Constants
-
-`csp.SELF`, `csp.NONE`, `csp.UNSAFE_INLINE`, `csp.UNSAFE_EVAL`, `csp.DATA`, `csp.BLOB`
+| API | Purpose |
+|-----|---------|
+| `csp.strict()` | Locked-down HTML baseline |
+| `csp.basic()` | Common web app defaults (allows `'unsafe-inline'` styles) |
+| `csp.api()` | Minimal policy for JSON / API responses |
 
 ## API
 
-| Method | Description |
-|--------|-------------|
-| `csp.new()` | Create empty policy |
-| `:default_src(...)` | Set default-src |
-| `:script_src(...)` | Set script-src |
-| `:style_src(...)` | Set style-src |
-| `:img_src(...)` | Set img-src |
-| `:apply()` | Set HTTP header |
-| `:build()` | Get CSP string |
-| `:clone()` | Copy policy |
-| `csp.nonce(value)` | Format nonce |
-| `csp.generate_nonce()` | Generate random nonce |
+| Call | Returns |
+|------|---------|
+| `csp.new()` | empty policy |
+| `csp.from(table)` | `policy, err` |
+| `csp.from_json(str)` | `policy, err` |
+| `csp.from_file(path)` | `policy, err` |
+| `:default_src(...)` / `:script_src(...)` / … | fluent setters |
+| `:set(directive, ...)` | replace directive |
+| `:remove(directive)` / `:clear()` | mutate |
+| `:report_only([bool])` | Report-Only header mode |
+| `:clone()` / `:merge(other)` | copy / merge |
+| `:build()` | header value string |
+| `:header()` | `name, value` |
+| `:apply()` | set `ngx.header` → `self, err` |
+| `csp.nonce(value)` | `'nonce-…'` source |
+| `csp.generate_nonce([len])` | `nonce, err` |
+| `csp.hash(algo, content)` | `expr, err` (needs `resty.sha*`) |
+| `csp.parse_report(body)` | parsed report table |
+| `csp.report_handler(cb)` | OpenResty content handler |
+
+`from()` rejects unknown keys. Use `report_only = true` in the config table when needed.
+
+## Examples
+
+- [`examples/nginx.conf`](examples/nginx.conf) — full server snippet with nonce
+- [`examples/basic.lua`](examples/basic.lua) — preset usage
+- [`examples/nonce.lua`](examples/nonce.lua) — nonce + strict-dynamic
+- [`examples/from_config.lua`](examples/from_config.lua) — table / JSON config
+- [`examples/report.lua`](examples/report.lua) — violation report endpoint
+
+## Development
+
+```bash
+make test
+make test-resty
+make test-nginx   # requires OpenResty + Test::Nginx
+```
+
+CI runs unit tests, `resty` tests in Docker, and `Test::Nginx` on every push to `main`.
 
 ## License
 
 MIT
-

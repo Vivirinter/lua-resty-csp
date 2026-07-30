@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a defect in lua-resty-csp
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: describe
+    attributes:
+      label: Description
+      description: What went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Minimal Lua / nginx snippet
+      render: lua
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: input
+    id: openresty
+    attributes:
+      label: OpenResty version
+      placeholder: "openresty/1.27.x"
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
